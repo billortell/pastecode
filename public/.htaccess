@@ -1,0 +1,345 @@
+# Apache configuration file
+# httpd.apache.org/docs/2.2/mod/quickreference.html
+
+# Note .htaccess files are an overhead, this logic should be in your Apache
+# config if possible.
+# httpd.apache.org/docs/2.2/howto/htaccess.html
+
+# ------------------------------------------------------------------------------
+# Better website experience for IE users
+# ------------------------------------------------------------------------------
+
+# Force the latest IE version, in various cases when it may fall back to IE7
+# mode. Use ChromeFrame if it's installed for a better experience for the poor
+# IE folk.
+
+<IfModule mod_setenvif.c>
+	<IfModule mod_headers.c>
+		BrowserMatch MSIE ie
+		Header set X-UA-Compatible "IE=Edge,chrome=1" env=ie
+	</IfModule>
+</IfModule>
+
+# Because X-UA-Compatible isn't sent tot non-IE (to save header bytes), we need
+# to inform proxies that content changes based on UA. Cache control is only set
+# if mod_headers is enabled, so that's unneccessary to declare.
+
+<IfModule mod_headers.c>
+	Header append Vary User-Agent
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Webfont access
+# ------------------------------------------------------------------------------
+
+# Allow access from all domains for webfonts.
+
+<FilesMatch "\.(ttf|otf|eot|woff|font.css)$">
+	<IfModule mod_headers.c>
+		Header set Access-Control-Allow-Origin "*"
+	</IfModule>
+</FilesMatch>
+
+# ------------------------------------------------------------------------------
+# Proper MIME type for all files
+# ------------------------------------------------------------------------------
+
+# Audio
+AddType audio/ogg                      oga ogg
+AddType audio/mp4                      m4a
+
+# Video
+AddType video/ogg                      ogv
+AddType video/mp4                      mp4 m4v
+AddType video/webm                     webm
+
+# Proper svg serving. Required for svg webfonts on iPad
+#   twitter.com/FontSquirrel/status/14855840545
+AddType     image/svg+xml              svg svgz 
+AddEncoding gzip                       svgz
+                                       
+# Webfonts                             
+AddType application/vnd.ms-fontobject  eot
+AddType application/x-font-ttf    ttf ttc
+AddType font/opentype                  otf
+AddType application/x-font-woff        woff
+
+# Assorted types                                      
+AddType image/x-icon                   ico
+AddType image/webp                     webp
+AddType text/cache-manifest            appcache manifest
+AddType text/x-component               htc
+AddType application/x-chrome-extension crx
+AddType application/x-xpinstall        xpi
+AddType application/octet-stream       safariextz
+AddType text/x-vcard                   vcf
+
+# ------------------------------------------------------------------------------
+# Gzip compression
+# ------------------------------------------------------------------------------
+
+<IfModule mod_deflate.c>
+	# Force deflate for mangled headers developer.yahoo.com/blogs/ydn/posts/2010/12/pushing-beyond-gzipping/
+	<IfModule mod_setenvif.c>
+		<IfModule mod_headers.c>
+			SetEnvIfNoCase ^(Accept-EncodXng|X-cept-Encoding|X{15}|~{15}|-{15})$ ^((gzip|deflate)\s,?\s(gzip|deflate)?|X{4,13}|~{4,13}|-{4,13})$ HAVE_Accept-Encoding
+			RequestHeader append Accept-Encoding "gzip,deflate" env=HAVE_Accept-Encoding
+		</IfModule>
+	</IfModule>
+
+	# HTML, TXT, CSS, JavaScript, JSON, XML, HTC:
+	<IfModule filter_module>
+		FilterDeclare   COMPRESS
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/html
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/css
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/javascript
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/plain
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $text/x-component
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/javascript
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/json
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/x-javascript
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/xhtml+xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/rss+xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/atom+xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/vnd.ms-fontobject
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $image/svg+xml
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $application/x-font-ttf
+		FilterProvider  COMPRESS  DEFLATE resp=Content-Type $font/opentype
+		FilterChain     COMPRESS
+		FilterProtocol  COMPRESS  DEFLATE change=yes;byteranges=no
+	</IfModule>
+
+	<IfModule !mod_filter.c>
+		# Legacy versions of Apache
+		AddOutputFilterByType DEFLATE text/html text/plain text/css application/json
+		AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript 
+		AddOutputFilterByType DEFLATE text/xml application/xml text/x-component
+		AddOutputFilterByType DEFLATE application/xhtml+xml application/rss+xml application/atom+xml
+		AddOutputFilterByType DEFLATE image/svg+xml application/vnd.ms-fontobject application/x-font-ttf font/opentype
+	</IfModule>
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Expires headers (for better cache control)
+# ------------------------------------------------------------------------------
+
+# These are pretty far-future expires headers.
+
+<IfModule mod_expires.c>
+	ExpiresActive on
+
+	# Perhaps better to whitelist expires rules? Perhaps.
+	ExpiresDefault                          "access plus 1 month"
+
+	# cache.appcache needs re-requests in FF 3.6 (thanks Remy ~Introducing HTML5)
+	ExpiresByType text/cache-manifest       "access plus 0 seconds"
+
+	# Your document html 
+	ExpiresByType text/html                 "access plus 0 seconds"
+
+	# Data
+	ExpiresByType text/xml                  "access plus 0 seconds"
+	ExpiresByType application/xml           "access plus 0 seconds"
+	ExpiresByType application/json          "access plus 0 seconds"
+
+	# RSS feed
+	ExpiresByType application/rss+xml       "access plus 1 hour"
+
+	# Favicon (cannot be renamed)
+	ExpiresByType image/x-icon              "access plus 1 week" 
+
+	# Media: images, video, audio
+	ExpiresByType image/gif                 "access plus 1 month"
+	ExpiresByType image/png                 "access plus 1 month"
+	ExpiresByType image/jpg                 "access plus 1 month"
+	ExpiresByType image/jpeg                "access plus 1 month"
+	ExpiresByType video/ogg                 "access plus 1 month"
+	ExpiresByType audio/ogg                 "access plus 1 month"
+	ExpiresByType video/mp4                 "access plus 1 month"
+	ExpiresByType video/webm                "access plus 1 month"
+
+	# HTC files  (css3pie)
+	ExpiresByType text/x-component          "access plus 1 month"
+
+	# Webfonts
+	ExpiresByType font/truetype             "access plus 1 month"
+	ExpiresByType font/opentype             "access plus 1 month"
+	ExpiresByType application/x-font-woff   "access plus 1 month"
+	ExpiresByType image/svg+xml             "access plus 1 month"
+	ExpiresByType application/vnd.ms-fontobject "access plus 1 month"
+
+	# CSS and JavaScript
+	ExpiresByType text/css                  "access plus 1 year"
+	ExpiresByType application/javascript    "access plus 1 year"
+	ExpiresByType text/javascript           "access plus 1 year"
+
+	<IfModule mod_headers.c>
+		Header append Cache-Control "public"
+	</IfModule>
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# ETag removal
+# ------------------------------------------------------------------------------
+
+# FileETag None is not enough for every server.
+
+<IfModule mod_headers.c>
+	Header unset ETag
+</IfModule>
+
+# Since we're sending far-future expires, we don't need ETags for static content
+
+FileETag None
+
+# ------------------------------------------------------------------------------
+# Start rewrite engine
+# ------------------------------------------------------------------------------
+
+# Turning on the rewrite engine is necessary for the following rules and
+# features. FollowSymLinks must be enabled for this to work.
+
+<IfModule mod_rewrite.c>
+	Options +FollowSymlinks
+	RewriteEngine On
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Suppress the "www." at the beginning of URLs
+# ------------------------------------------------------------------------------
+
+# The same content should never be available under two different URLs -
+# especially not with and without "www." at the beginning, since this can cause
+# SEO problems (duplicate content).
+
+<IfModule mod_rewrite.c>
+	RewriteCond %{HTTPS} !=on
+	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+	RewriteRule ^(.*)$ http://%1/$1 [R=301,L]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Prevent 404 errors for non-existing redirected folders
+# ------------------------------------------------------------------------------
+
+# Without -MultiViews, Apache will give a 404 for a rewritten url if a folder
+# of the same name does not exist.
+
+Options -MultiViews 
+
+# ------------------------------------------------------------------------------
+# UTF-8 encoding
+# ------------------------------------------------------------------------------
+
+# Use UTF-8 encoding for anything served text/plain or text/html
+
+AddDefaultCharset utf-8
+
+# Force UTF-8 for a number of file formats
+
+AddCharset utf-8 .html .css .js .xml .json .rss
+
+# ------------------------------------------------------------------------------
+# A little more security
+# ------------------------------------------------------------------------------
+
+# "-Indexes" will have Apache block users from browsing folders without a
+# default document. Usually you should leave this activated, because you
+# shouldn't allow everybody to surf through every folder on your server (which
+# includes private places like CMS system folders).
+
+Options -Indexes
+
+# Block access to "hidden" directories whose names begin with a period. This
+# includes directories used by version control systems such as SVN or Git.
+
+<IfModule mod_rewrite.c>
+	RewriteRule "(^|/)\." - [F]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# SEO Redirects
+# ------------------------------------------------------------------------------
+
+# Get rid of pastebin.us
+
+<IfModule mod_rewrite.c>
+	RewriteCond %{HTTP_HOST} ^pastebin\.us$
+	RewriteRule ^(.*)$ http://www.pastecode.com/ [R=301,L]
+</IfModule>
+
+# Since the origional pastecode had subdomains for users, and a ton of them are
+# indexed, redirect them all to the new pastecode.com
+
+<IfModule mod_rewrite.c>
+	RewriteCond %{HTTP_HOST} ^(www.)?([a-z0-9-]+).pastecode.com [NC]
+	RewriteRule ^(.*)$ http://www.pastecode.com/$1/ [R=301,L]
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# Application
+# ------------------------------------------------------------------------------
+
+# Checks to see if the user is attempting to access a valid file, such as an
+# image or css document. If this isn't true, it sends the request to index.php
+
+<IfModule mod_rewrite.c>
+	RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+# If we don't have mod_rewrite installed, all 404's can be sent to the index.php
+# and everything works as normal.
+
+<IfModule !mod_rewrite.c>
+	ErrorDocument 404 /index.php
+</IfModule>
+
+# ------------------------------------------------------------------------------
+# IP Bans
+# ------------------------------------------------------------------------------
+
+# July 29, 2011
+deny from 80.63.56.147
+deny from 190.145.116.7
+
+# July 31, 2011
+deny from 211.75.247.71
+deny from 118.182.20.242
+deny from 41.190.16.17
+deny from 203.97.144.26
+
+# August 02, 2011
+deny from 202.57.69.84
+deny from 188.127.230.161
+deny from 85.214.128.253
+deny from 180.95.129.232
+deny from 205.202.120.216
+deny from 201.224.73.236
+deny from 210.158.6.201
+deny from 109.88.13.122
+deny from 62.76.44.32
+deny from 61.152.108.19
+deny from 125.75.204.22
+deny from 195.84.48.28
+deny from 186.215.214.114
+deny from 85.235.204.213
+deny from 212.88.118.181
+deny from 125.164.115.71
+deny from 58.22.151.6
+deny from 202.146.109.15
+deny from 188.142.49.254
+deny from 109.200.97.254
+deny from 95.140.176.195
+deny from 187.84.194.3
+deny from 222.130.13.102
+deny from 116.248.41.72
+deny from 151.9.233.6
+deny from 128.104.111.51
+deny from 119.115.136.226
+deny from 193.226.51.57
+deny from 218.19.119.99
+deny from 217.73.161.146
